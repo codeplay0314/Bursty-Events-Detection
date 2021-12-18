@@ -7,6 +7,18 @@
     <artifactId>storm-wordcount</artifactId>
     <packaging>jar</packaging>
     <version>0.0</version>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>6</source>
+                    <target>6</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
     <name>storm-wordcount</name>
 
     <properties>

@@ -56,7 +56,7 @@ public class WordCountTopology {
 //            // 发射数据
             FileInputStream inputStream = null;
             try {
-                inputStream = new FileInputStream("C:\\Users\\codep\\Desktop\\Bursty-Events-Detection\\data\\news.txt");
+                inputStream = new FileInputStream("C:/Users/codep/Desktop/Bursty-Events-Detection/data/news.txt");
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }
