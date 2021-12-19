@@ -29,12 +29,20 @@ public class BurstyEventsDetectionTopology {
         TopologyBuilder builder = new TopologyBuilder();
 
         builder.setSpout("News", new NewsSpout(), 1);
-        builder.setBolt("BurstyFeatures", new BurstyFeaturesBolt(), 5).shuffleGrouping("News");
+        builder.setBolt("BurstyFeatures", new BurstyFeaturesBolt(), 5)
+                .shuffleGrouping("News", "NewsStream1");
         builder.setBolt("FeatureProcess", new FeatureProcessBolt(), 10)
-                .fieldsGrouping("BurstyFeatures", new Fields("date", "feature"));
+                .fieldsGrouping("BurstyFeatures", new Fields("feature"));
+        builder.setBolt("DataCollect", new DataCollectBolt(), 1)
+                .globalGrouping("FeatureProcess")
+                .globalGrouping("BurstyFeatures", "FeatureCount");
+        builder.setBolt("BurstyEvents", new BurstyEventsBolt(), 1)
+                .globalGrouping("DataCollect");
+//                .globalGrouping("News", "NewsStream2");
 
         Config conf = new Config();
         conf.put("interval", 3000);
+        conf.put("expire_num", 30);
         conf.put("news_file_path", "C:/Users/codep/Desktop/Bursty-Events-Detection/data/news");
 
         if (args != null && args.length > 0) {

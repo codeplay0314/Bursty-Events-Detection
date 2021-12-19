@@ -30,13 +30,15 @@ public class BurstyFeaturesBolt extends BaseBasicBolt {
             no++;
         }
 
+        collector.emit("FeatureCount", new Values(date, index.size()));
         for (String key : index.keySet()) {
-            collector.emit(new Values(date, key, index.get(key).toString()));
+            collector.emit(new Values(date, key, index.get(key), len));
         }
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("date", "feature", "doc_set"));
+        declarer.declare(new Fields("date", "feature", "doc_set", "total_size"));
+        declarer.declareStream("FeatureCount", new Fields("date", "count"));
     }
 }

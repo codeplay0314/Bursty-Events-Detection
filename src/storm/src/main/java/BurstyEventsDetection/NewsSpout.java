@@ -49,7 +49,8 @@ public class NewsSpout extends BaseRichSpout {
             String[] tokens = str.split("\t");
             if (!cur_date.equals(tokens[0])) {
                 if (!cur_date.equals("")) {
-                    _collector.emit(new Values(cur_date, docs));
+                    _collector.emit("NewsStream1", new Values(cur_date, docs));
+                    _collector.emit("NewsStream2", new Values(cur_date, docs));
                     docs = new ArrayList<Object>();
                     Utils.sleep(Interval);
                 }
@@ -63,7 +64,8 @@ public class NewsSpout extends BaseRichSpout {
             docs.add(doc);
         }
         if (docs.size() > 0) {
-            _collector.emit(new Values(docs));
+            _collector.emit("NewsStream1", new Values(cur_date, docs));
+            _collector.emit("NewsStream2", new Values(cur_date, docs));
         }
 
         try {
@@ -79,6 +81,7 @@ public class NewsSpout extends BaseRichSpout {
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("date", "documents"));
+        declarer.declareStream("NewsStream1", new Fields("date", "documents"));
+        declarer.declareStream("NewsStream2", new Fields("date", "documents"));
     }
 }
