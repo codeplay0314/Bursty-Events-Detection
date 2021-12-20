@@ -1,12 +1,12 @@
-package BurstyEventsDetection;
+package BurstyEventsDetection.module;
 
 public class Feature {
     private final String _val;
 
-    Feature(String str) {
+    public Feature(String str) {
         _val = str;
     }
-    String get() {
+    public String get() {
         return _val;
     }
 }

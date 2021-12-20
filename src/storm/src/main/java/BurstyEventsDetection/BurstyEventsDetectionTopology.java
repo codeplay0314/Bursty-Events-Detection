@@ -34,8 +34,8 @@ public class BurstyEventsDetectionTopology {
         builder.setBolt("FeatureProcess", new FeatureProcessBolt(), 10)
                 .fieldsGrouping("BurstyFeatures", new Fields("feature"));
         builder.setBolt("DataCollect", new DataCollectBolt(), 1)
-                .globalGrouping("FeatureProcess")
-                .globalGrouping("BurstyFeatures", "FeatureCount");
+                .globalGrouping("BurstyFeatures", "FeatureCount")
+                .globalGrouping("FeatureProcess");
         builder.setBolt("BurstyEvents", new BurstyEventsBolt(), 1)
                 .globalGrouping("DataCollect");
         builder.setBolt("HotPeriod", new HotPeriodBolt(), 1)

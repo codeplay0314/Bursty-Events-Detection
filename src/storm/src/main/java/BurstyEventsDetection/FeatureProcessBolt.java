@@ -1,5 +1,7 @@
 package BurstyEventsDetection;
 
+import BurstyEventsDetection.module.Feature;
+import BurstyEventsDetection.module.FeatureInfo;
 import javafx.util.Pair;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -18,10 +20,7 @@ public class FeatureProcessBolt extends BaseRichBolt {
 
     OutputCollector _collector;
     int expire;
-    HashMap<String, LinkedBlockingQueue<BitSet>> dic = new HashMap<String, LinkedBlockingQueue<BitSet>>();
-    HashMap<String, LinkedBlockingQueue<String>> dicdate = new HashMap<String, LinkedBlockingQueue<String>>();
-    HashMap<String, LinkedBlockingQueue<Pair<Integer, Integer>>> dicdata = new HashMap<String, LinkedBlockingQueue<Pair<Integer, Integer>>>();
-    HashMap<String, Pair<Integer, Integer>> p = new HashMap<String, Pair<Integer, Integer>>();
+    HashMap<String, LinkedBlockingQueue<FeatureInfo.Info>> cache = new HashMap<String, LinkedBlockingQueue<FeatureInfo.Info>>();
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -33,36 +32,20 @@ public class FeatureProcessBolt extends BaseRichBolt {
     public void execute(Tuple input) {
         String date = input.getValue(0).toString();
         String feature = input.getValue(1).toString();
-        BitSet doc_set = (BitSet) input.getValue(2);
-        int size = Integer.parseInt(input.getValue(3).toString());
+        FeatureInfo.Info info = (FeatureInfo.Info) input.getValue(2);
 
-        LinkedBlockingQueue<BitSet> history = dic.containsKey(feature)? dic.get(feature) : new LinkedBlockingQueue<BitSet>();
-        LinkedBlockingQueue<String> hisdate = dicdate.containsKey(feature)? dicdate.get(feature) : new LinkedBlockingQueue<String>();
-        LinkedBlockingQueue<Pair<Integer, Integer>> hisdata = dicdata.containsKey(feature)? dicdata.get(feature) : new LinkedBlockingQueue<Pair<Integer, Integer>>();
-        Pair<Integer, Integer> stat = p.containsKey(feature)? p.get(feature): new Pair<Integer, Integer>(0, 0);
-        if (history.size() >= expire) {
-            history.poll();
-            hisdate.poll();
-            Pair<Integer, Integer> pair = hisdata.poll();
-            stat = new Pair<Integer, Integer>(stat.getKey() - pair.getKey(), stat.getValue() - pair.getValue());
+        LinkedBlockingQueue<FeatureInfo.Info> infos = cache.containsKey(feature)? cache.get(feature): new LinkedBlockingQueue<FeatureInfo.Info>();
+        if (infos.size() >= expire) {
+            infos.poll();
         }
-        history.add(doc_set);
-        hisdate.add(date);
-        Pair<Integer, Integer> pair = new Pair<Integer, Integer>(doc_set.cardinality(), size);
-        hisdata.add(pair);
-        stat = new Pair<Integer, Integer>(stat.getKey() + pair.getKey(), stat.getValue() + pair.getValue());
+        infos.add(info);
+        cache.put(feature, infos);
 
-        dic.put(feature, history);
-        dicdate.put(feature, hisdate);
-        dicdata.put(feature, hisdata);;
-        p.put(feature, stat);
-
-        _collector.emit(new Values(date, feature, dic.get(feature), dicdate.get(feature), dicdata.get(feature), p.get(feature)));
-
+        _collector.emit(new Values(date, new FeatureInfo(new Feature(feature), infos)));
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("date", "feature", "doc_set_his", "date_set_his", "data_set_his", "feat_stat"));
+        declarer.declare(new Fields("date", "feature_info"));
     }
 }

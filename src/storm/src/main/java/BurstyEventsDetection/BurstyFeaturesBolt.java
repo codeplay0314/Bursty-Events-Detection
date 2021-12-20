@@ -1,5 +1,9 @@
 package BurstyEventsDetection;
 
+import BurstyEventsDetection.module.Document;
+import BurstyEventsDetection.module.Feature;
+import BurstyEventsDetection.module.FeatureInfo;
+import javafx.util.Pair;
 import org.apache.storm.topology.BasicOutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseBasicBolt;
@@ -32,13 +36,14 @@ public class BurstyFeaturesBolt extends BaseBasicBolt {
 
         collector.emit("FeatureCount", new Values(date, index.size()));
         for (String key : index.keySet()) {
-            collector.emit(new Values(date, key, index.get(key), len));
+            BitSet bset = index.get(key);
+            collector.emit(new Values(date, key, new FeatureInfo.Info(date, bset, new Pair<Integer, Integer>(bset.cardinality(), len))));
         }
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("date", "feature", "doc_set", "total_size"));
+        declarer.declare(new Fields("date", "feature", "featinfo_info"));
         declarer.declareStream("FeatureCount", new Fields("date", "count"));
     }
 }
