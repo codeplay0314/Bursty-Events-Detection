@@ -1,4 +1,4 @@
-package BurstyEventsDetection;
+package BurstyEventsDetection.module;
 
 import java.util.*;
 
@@ -6,10 +6,10 @@ public class Document {
     private ArrayList<Feature> _val = new ArrayList<Feature>();
     private int _len = 0;
 
-    ArrayList<Feature> get() {
+    public ArrayList<Feature> get() {
         return _val;
     }
-    void add(Feature f) {
+    public void add(Feature f) {
         _val.add(f);
         _len++;
     }
