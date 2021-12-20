@@ -28,14 +28,28 @@ public class FeatureInfo {
         public Pair<Integer, Integer> get_doc_info() {
             return _doc_info;
         }
+        public Double get_p() {
+            return Double.valueOf(_doc_info.getKey()) / _doc_info.getValue();
+        }
     }
 
     private Feature _feature;
     private Info[] _infos;
+    private int avgN;
+    private double avgp;
 
     public FeatureInfo(Feature feature, LinkedBlockingQueue<Info> infos) {
         _feature = feature;
         _infos = infos.toArray(new Info[0]);
+
+        avgN = 0;
+        avgp = 0;
+        for (Info info : _infos) {
+            avgN += info.get_doc_info().getValue();
+            avgp += Double.valueOf(info.get_doc_info().getKey()) / info.get_doc_info().getValue();
+        }
+        avgN /= _infos.length;
+        avgp /= _infos.length;
     }
     public Feature get_feature() {
         return _feature;
@@ -43,21 +57,16 @@ public class FeatureInfo {
     public Info[] get_infos() {
         return _infos;
     }
+    public int get_N() {
+        return avgN;
+    }
+    public double get_p() {
+        return avgp;
+    }
 
     public boolean isStopword() {
-        int len = _infos.length;
-        if (len <= 5) return false;
-
-        double p = 0;
-        int N = 0;
-        for (Info info : _infos) {
-            p += Double.valueOf(info.get_doc_info().getKey()) / info.get_doc_info().getValue();
-            N += info.get_doc_info().getValue();
-        }
-        p /= len;
-        N /= len;
-
-        boolean res = Binomial.binomial(N, N, p) > 0;
+        if (_infos.length <= 5) return false;
+        boolean res = Binomial.binomial(avgN, avgN, avgp) > 0;
         return res;
     }
 
