@@ -30,7 +30,7 @@ public class BurstyEventsDetectionTopology {
 
         builder.setSpout("News", new NewsSpout(), 1);
         builder.setBolt("BurstyFeatures", new BurstyFeaturesBolt(), 5)
-                .shuffleGrouping("News", "NewsStream1");
+                .shuffleGrouping("News");
         builder.setBolt("FeatureProcess", new FeatureProcessBolt(), 10)
                 .fieldsGrouping("BurstyFeatures", new Fields("feature"));
         builder.setBolt("DataCollect", new DataCollectBolt(), 1)
@@ -38,7 +38,9 @@ public class BurstyEventsDetectionTopology {
                 .globalGrouping("BurstyFeatures", "FeatureCount");
         builder.setBolt("BurstyEvents", new BurstyEventsBolt(), 1)
                 .globalGrouping("DataCollect");
-//                .globalGrouping("News", "NewsStream2");
+        builder.setBolt("HotPeriod", new HotPeriodBolt(), 1)
+                .globalGrouping("BurstyEvents")
+                .globalGrouping("DataCollect");
 
         Config conf = new Config();
         conf.put("interval", 3000);
