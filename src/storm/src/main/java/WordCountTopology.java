@@ -56,7 +56,7 @@ public class WordCountTopology {
 //            // 发射数据
             FileInputStream inputStream = null;
             try {
-                inputStream = new FileInputStream("C:/Users/codep/Desktop/Bursty-Events-Detection/data/news.txt");
+                inputStream = new FileInputStream("data/news.txt");
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }
@@ -204,7 +204,7 @@ public class WordCountTopology {
     }
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         // 在main方法中，会去将spout和bolts组合起来，构建成一个拓扑
         TopologyBuilder builder = new TopologyBuilder();
 

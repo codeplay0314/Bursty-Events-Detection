@@ -25,7 +25,7 @@ import java.util.Random;
 
 public class BurstyEventsDetectionTopology {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         TopologyBuilder builder = new TopologyBuilder();
 
         builder.setSpout("News", new NewsSpout(), 1);
@@ -43,7 +43,7 @@ public class BurstyEventsDetectionTopology {
         Config conf = new Config();
         conf.put("interval", 3000);
         conf.put("expire_num", 30);
-        conf.put("news_file_path", "C:/Users/codep/Desktop/Bursty-Events-Detection/data/news");
+        conf.put("news_file_path", "data/news.txt");
 
         if (args != null && args.length > 0) {
             // storm
