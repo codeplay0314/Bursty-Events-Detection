@@ -10,7 +10,7 @@ public class BurstyEventsDetectionTopology {
     public static void main(String[] args) throws Exception {
         TopologyBuilder builder = new TopologyBuilder();
         builder.setSpout("documents", new DocumentSpout(), 1);
-        builder.setBolt("words", new DocumentWordBolt(), 3)
+        builder.setBolt("words", new DocumentWordBolt(), 2)
                 .shuffleGrouping("documents");
         builder.setBolt("features", new WordFeaturesBolt(), WordFeaturesBolt.WORD_BOLT_COUNT)
                 .customGrouping("words", new WordFeaturesBolt.WordStreamGrouping());
@@ -32,7 +32,7 @@ public class BurstyEventsDetectionTopology {
             conf.setMaxTaskParallelism(16);
             LocalCluster cluster = new LocalCluster();
             cluster.submitTopology("BurstyEventsDetectionTopology", conf, builder.createTopology());
-            Utils.sleep(10 * 1000);
+            Utils.sleep(3600 * 1000);
             cluster.shutdown();
         }
     }

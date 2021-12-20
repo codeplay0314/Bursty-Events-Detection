@@ -14,7 +14,7 @@ import java.util.*;
 
 public class WordFeaturesBolt extends BaseBasicBolt {
     public static final int FEATURE_MIN_COUNT = 5;
-    public static final int WORD_BOLT_COUNT = 12;
+    public static final int WORD_BOLT_COUNT = 16;
     HashMap<String, MinHashCounter> wordMap = new HashMap<>();
 
     public static class WordStreamGrouping implements CustomStreamGrouping {
@@ -30,7 +30,7 @@ public class WordFeaturesBolt extends BaseBasicBolt {
         @Override
         public List<Integer> chooseTasks(int i, List<Object> list) {
             int id = (int) list.get(0);
-            if (id == DocumentSpout.SIGNAL_SUBMIT)
+            if (DocumentSpout.isControlSignal(id))
                 return targetTasks; // all grouping
             int t = Math.abs(list.get(1).toString().hashCode()) % numTasks;
             return Collections.singletonList(targetTasks.get(t));
@@ -42,20 +42,17 @@ public class WordFeaturesBolt extends BaseBasicBolt {
         int id = tuple.getIntegerByField("id");
         String word = tuple.getStringByField("word");
         if (DocumentSpout.isControlSignal(id)) {
-            // control signal (word is date)
-            if (id == DocumentSpout.SIGNAL_SUBMIT) {
-                // submit data
-                for (Map.Entry<String, MinHashCounter> entry : wordMap.entrySet()) {
-                    MinHashCounter counter = entry.getValue();
-                    if (counter.count > FEATURE_MIN_COUNT) {
-                        // System.out.println("SUBMIT: " + entry.getKey());
-                        basicOutputCollector.emit(new Values(word, entry.getKey(), counter.count, counter.getMinHash()));
-                    }
-                    if (counter.count > 0)
-                        counter.clear();
+            // submit data
+            for (Map.Entry<String, MinHashCounter> entry : wordMap.entrySet()) {
+                MinHashCounter counter = entry.getValue();
+                if (counter.count > FEATURE_MIN_COUNT) {
+                    // System.out.println("SUBMIT: " + entry.getKey());
+                    basicOutputCollector.emit(new Values(word, entry.getKey(), counter.count, counter.getMinHash()));
                 }
-                basicOutputCollector.emit(new Values(word, "", 0, 0, 0));
+                if (counter.count > 0)
+                    counter.clear();
             }
+            basicOutputCollector.emit(new Values(word, "", 0, -id));
         } else if (word.length() > 0) {
             if (wordMap.containsKey(word)) {
                 wordMap.get(word).put(id);

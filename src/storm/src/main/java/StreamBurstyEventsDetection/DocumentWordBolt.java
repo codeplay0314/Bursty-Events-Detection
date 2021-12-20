@@ -20,7 +20,7 @@ public class DocumentWordBolt extends BaseBasicBolt {
         }
         else {
             // document
-            String[] words = tuple.getStringByField("content").split("[^a-zA-Z]+");
+            String[] words = tuple.getStringByField("content").split(" ");
             HashSet<String> wordList = new HashSet<>();
             for (String word: words) {
                 if (!wordList.contains(word)) {
