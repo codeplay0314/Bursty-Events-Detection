@@ -47,8 +47,6 @@ public class HotPeriodBolt extends BaseRichBolt {
         Double[] ps = plist.toArray(new Double[0]);
         if (p > Calc.avg(ps) + 2 * Calc.dev(ps)) {
             System.out.println("Bursty Events: " + e.list() + " on " + date);
-        } else {
-            System.out.println("trump is not bursty on " + date);
         }
     }
 
