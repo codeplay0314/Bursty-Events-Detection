@@ -47,6 +47,12 @@ public class DataCollectBolt extends BaseBasicBolt {
             int size = sizes.get(date);
             infos = cache.get(date);
             if (infos.size() >= size) {
+//                Stopword Statisics
+//                int n = 0;
+//                for (Object info : infos) {
+//                    if (((FeatureInfo) info).isStopword()) n++;
+//                }
+//                System.out.printf("%s: %d out of %d, %f%%\n", date, n, size, Double.valueOf(n) / size * 100);
                 collector.emit(new Values(date, infos));
                 infos.remove(date);
                 sizes.remove(date);

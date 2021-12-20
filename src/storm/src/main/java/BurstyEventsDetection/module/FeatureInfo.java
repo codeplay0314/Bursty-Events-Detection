@@ -1,5 +1,6 @@
 package BurstyEventsDetection.module;
 
+import BurstyEventsDetection.lib.Binomial;
 import javafx.util.Pair;
 
 import java.util.BitSet;
@@ -42,4 +43,22 @@ public class FeatureInfo {
     public Info[] get_infos() {
         return _infos;
     }
+
+    public boolean isStopword() {
+        int len = _infos.length;
+        if (len <= 5) return false;
+
+        double p = 0;
+        int N = 0;
+        for (Info info : _infos) {
+            p += Double.valueOf(info.get_doc_info().getKey()) / info.get_doc_info().getValue();
+            N += info.get_doc_info().getValue();
+        }
+        p /= len;
+        N /= len;
+
+        boolean res = Binomial.binomial(N, N, p) > 0;
+        return res;
+    }
+
 }

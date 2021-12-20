@@ -2,7 +2,6 @@ package BurstyEventsDetection;
 
 import BurstyEventsDetection.module.Feature;
 import BurstyEventsDetection.module.FeatureInfo;
-import javafx.util.Pair;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -11,7 +10,6 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -41,7 +39,8 @@ public class FeatureProcessBolt extends BaseRichBolt {
         infos.add(info);
         cache.put(feature, infos);
 
-        _collector.emit(new Values(date, new FeatureInfo(new Feature(feature), infos)));
+        FeatureInfo finfo = new FeatureInfo(new Feature(feature), infos);
+        _collector.emit(new Values(date, finfo));
     }
 
     @Override
