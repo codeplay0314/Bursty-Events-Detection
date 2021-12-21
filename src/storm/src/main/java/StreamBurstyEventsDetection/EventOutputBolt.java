@@ -14,7 +14,7 @@ import java.util.*;
 
 public class EventOutputBolt extends BaseBasicBolt {
     public static final double BURST_THRESHOLD_SIGMA = 2;
-    public static final int COLD_BOOT_DAY = 14;
+    public static final int COLD_BOOT_DAY = 16;
     public static final double BURST_THRESHOLD_SIMILAR = 1 / Math.sqrt(2);
     public static final int BURST_MIN_COUNT = 5;
 
@@ -90,34 +90,47 @@ public class EventOutputBolt extends BaseBasicBolt {
         while (dateFeatures.features.size() > 0) {
             double score_sum = 0;
             int score_cnt = 0;
-            ArrayList<String> feat = new ArrayList<>();
-            DateFeatures.Feature k = null;
+            ArrayList<DateFeatures.Feature> feat = new ArrayList<>();
             for (Iterator<DateFeatures.Feature> it = dateFeatures.features.iterator(); it.hasNext();) {
                 DateFeatures.Feature x = it.next();
-                if (k == null) {
-                    k = x;
-                    feat.add(k.word);
+                if (feat.size() == 0) {
+                    feat.add(x);
                     it.remove();
                 } else {
-                    int d = MinHashCounter.compareHash(k.min_hash, x.min_hash);
-                    double t = (double) (128 - d) / (256 - d) * (k.count + x.count) / Math.sqrt(k.count * x.count);
-//                    System.out.println("[SIMILAR] " + k.word + ", " + x.word + ": " + t);
-                    if (t > BURST_THRESHOLD_SIMILAR) {
-                        score_sum += t;
-                        score_cnt++;
-                        feat.add(x.word);
-//                        k = x;
+                    double score_part_sum = 0;
+                    boolean add_feature = true;
+                    for (DateFeatures.Feature k: feat) {
+                        int d = MinHashCounter.compareHash(k.min_hash, x.min_hash);
+                        double t = (double) (128 - d) / (256 - d) * (k.count + x.count) / Math.sqrt(k.count * x.count);
+//                        System.out.println("[SIMILAR] " + k.word + ", " + x.word + ": " + t);
+                        if (t > BURST_THRESHOLD_SIMILAR) {
+                            score_part_sum += t;
+                        } else {
+                            add_feature = false;
+                            break;
+                        }
+                    }
+                    if (add_feature) {
+                        score_sum += score_part_sum;
+                        score_cnt += feat.size();
+                        feat.add(x);
                         it.remove();
                     }
                 }
             }
+            ArrayList<String> words = new ArrayList<>();
+            for (DateFeatures.Feature f: feat)
+                words.add(f.word);
             if (score_cnt > 0) {
-                events.add(new Pair<>(score_sum / score_cnt, feat));
-            } else if (first && k != null) {
+                events.add(new Pair<>(score_sum / score_cnt, words));
+//                System.out.println("[EVENT] score=" + (score_sum / score_cnt));
+//                for (DateFeatures.Feature f: feat)
+//                    System.out.println("[EVENT FEATURE] " + f.word + ", count=" + f.count + ", hash=" + Arrays.toString(f.min_hash));
+            } else if (first && feat.size() > 0) {
                 int c2 = dateFeatures.features.size() > 0 ? dateFeatures.features.getFirst().count : 1;
-                double r = (double) k.count / c2 - 1;
+                double r = (double) feat.get(0).count / c2 - 1;
                 if (r > BURST_THRESHOLD_SIMILAR)
-                    events.add(new Pair<>(r, feat));
+                    events.add(new Pair<>(r, words));
             }
             first = false;
         }
