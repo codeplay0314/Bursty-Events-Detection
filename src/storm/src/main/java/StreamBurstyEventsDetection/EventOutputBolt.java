@@ -15,7 +15,8 @@ import java.util.*;
 public class EventOutputBolt extends BaseBasicBolt {
     public static final double BURST_THRESHOLD_SIGMA = 2;
     public static final int COLD_BOOT_DAY = 14;
-    public static final double BURST_THRESHOLD_SIMILAR = 0.71;
+    public static final double BURST_THRESHOLD_SIMILAR = 1 / Math.sqrt(2);
+    public static final int BURST_MIN_COUNT = 5;
 
     HashMap<String, DateFeatures> dateCollection = new HashMap<>();
     HashMap<String, WordHistory> wordCollection = new HashMap<>();
@@ -52,10 +53,10 @@ public class EventOutputBolt extends BaseBasicBolt {
                 history.freq_sum += n;
                 history.freq_cnt++;
                 double p = history.freq_sum / history.freq_cnt;
-                if (p > 1 || n > 1) {
-                    System.out.println("[BUG PROBABILITY] " + feature.word + ", n=" + n + ", p=" + p);
-                }
-                if (p >= 0.8 || n >= 0.8)
+//                if (p > 1 || n > 1) {
+//                    System.out.println("[BUG PROBABILITY] " + feature.word + ", n=" + n + ", p=" + p);
+//                }
+                if (p >= 0.8 || n >= 0.8 || feature.count < BURST_MIN_COUNT)
                     it.remove();
                 else {
                     double o = Math.sqrt(p * (1 - p) / dateFeatures.all_count);
@@ -76,6 +77,7 @@ public class EventOutputBolt extends BaseBasicBolt {
                 it.remove();
             }
         }
+        System.out.println("There are " + wordCollection.size() + " word history records.");
         dateFeatures.features.sort((o1, o2) -> -Integer.compare(o1.count, o2.count));
         System.out.println("There are " + dateFeatures.features.size() + " bursty features.");
 
@@ -104,7 +106,7 @@ public class EventOutputBolt extends BaseBasicBolt {
                         score_sum += t;
                         score_cnt++;
                         feat.add(x.word);
-                        k = x;
+//                        k = x;
                         it.remove();
                     }
                 }

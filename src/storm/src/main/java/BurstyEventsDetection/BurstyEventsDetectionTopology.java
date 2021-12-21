@@ -45,7 +45,7 @@ public class BurstyEventsDetectionTopology {
         Config conf = new Config();
         conf.put("interval", 3000);
         conf.put("expire_num", 30);
-        conf.put("news_file_path", "data/news.txt");
+        conf.put("news_file_path", "../../data/news.txt");
 
         if (args != null && args.length > 0) {
             // storm

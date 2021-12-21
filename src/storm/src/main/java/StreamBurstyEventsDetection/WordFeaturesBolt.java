@@ -13,7 +13,7 @@ import org.apache.storm.tuple.Values;
 import java.util.*;
 
 public class WordFeaturesBolt extends BaseBasicBolt {
-    public static final int FEATURE_MIN_COUNT = 5;
+    public static final int MIN_COUNT_SUBMIT = 1;
     public static final int WORD_BOLT_COUNT = 16;
     HashMap<String, MinHashCounter> wordMap = new HashMap<>();
 
@@ -45,7 +45,7 @@ public class WordFeaturesBolt extends BaseBasicBolt {
             // submit data
             for (Map.Entry<String, MinHashCounter> entry : wordMap.entrySet()) {
                 MinHashCounter counter = entry.getValue();
-                if (counter.count > FEATURE_MIN_COUNT) {
+                if (counter.count > MIN_COUNT_SUBMIT) {
                     // System.out.println("SUBMIT: " + entry.getKey());
                     basicOutputCollector.emit(new Values(word, entry.getKey(), counter.count, counter.getMinHash()));
                 }

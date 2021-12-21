@@ -17,7 +17,7 @@ public class DocumentSpout extends BaseRichSpout {
     public static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
     public static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat("HH:mm:ss.SSS");
     public static final int SUBMIT_DURATION = 86400;
-    public static final int SUBMIT_WAIT_MS = 200;
+    public static final int SUBMIT_WAIT_MS = 100;
 
     SpoutOutputCollector _collector;
     int last_submit_time = 0;
