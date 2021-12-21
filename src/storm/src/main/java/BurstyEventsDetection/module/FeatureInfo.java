@@ -65,7 +65,7 @@ public class FeatureInfo {
     }
 
     public boolean isStopword() {
-        if (_infos.length <= 5) return false;
+        if (_infos.length <= 7) return false;
         boolean res = Binomial.binomial(avgN, avgN, avgp) > 0;
         return res;
     }

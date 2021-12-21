@@ -13,12 +13,18 @@ import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static java.lang.Math.max;
 
 public class HotPeriodBolt extends BaseRichBolt {
 
+    OutputStream file;
     OutputCollector _collector;
     int expire;
 
@@ -26,7 +32,7 @@ public class HotPeriodBolt extends BaseRichBolt {
     HashMap<String, HashMap<String, Pair<Integer, Integer>>> cache = new HashMap<String, HashMap<String, Pair<Integer, Integer>>>();
     HashMap<String, Double> P = new HashMap<String, Double>();
 
-    private void isBurstEvent(Event e, String date) {
+    private void isBurstEvent(Event e, String date) throws IOException {
         double p = 0;
         List<Double> plist = new ArrayList<Double>();
         for (String day : cache.keySet()) {
@@ -41,12 +47,12 @@ public class HotPeriodBolt extends BaseRichBolt {
                     cnt++;
                 }
             }
-            plist.add(avgp / cnt);
+            if (cnt > 0) plist.add(avgp / cnt);
             if (date.equals(day)) p = avgp / cnt;
         }
         Double[] ps = plist.toArray(new Double[0]);
         if (p > Calc.avg(ps) + 2 * Calc.dev(ps)) {
-            System.out.println("Bursty Events: " + e.list() + " on " + date);
+            file.write(("Bursty Events on " + date + ": " + e.list() + "\n").getBytes(StandardCharsets.UTF_8));
         }
     }
 
@@ -54,6 +60,11 @@ public class HotPeriodBolt extends BaseRichBolt {
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         _collector = collector;
         expire = Integer.parseInt(stormConf.get("expire_num").toString());
+        try {
+            file = new FileOutputStream(stormConf.get("out_file").toString());
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -64,9 +75,14 @@ public class HotPeriodBolt extends BaseRichBolt {
             Event e = (Event) input.getValue(1);
             if (e.ends()) {
                 event_list.remove(date);
+                System.out.println(date + " ends at " + new Date());
             } else {
                 if (cache.containsKey(date)) {
-                    isBurstEvent(e, date);
+                    try {
+                        isBurstEvent(e, date);
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
                 } else {
                     List<Event> elist = event_list.containsKey(date)? event_list.get(date): new ArrayList<Event>();
                     elist.add(e);
@@ -88,24 +104,29 @@ public class HotPeriodBolt extends BaseRichBolt {
             }
             cache.put(date, rec);
 
-            if (cache.size() >= expire) {
-                String[] dates = cache.keySet().toArray(new String[0]);
-                Arrays.sort(dates);
-                int r = dates.length, l = max(0, r - expire);
-                Arrays.copyOfRange(dates, l, r);
-                for (String d : dates) {
-                    event_list.remove(d);
-                    cache.remove(d);
-                }
-            }
+//            if (cache.size() >= expire) {
+//                String[] dates = cache.keySet().toArray(new String[0]);
+//                Arrays.sort(dates);
+//                int r = dates.length, l = max(0, r - expire);
+//                Arrays.copyOfRange(dates, l, r);
+//                for (String d : dates) {
+//                    event_list.remove(d);
+//                    cache.remove(d);
+//                }
+//            }
             if (event_list.containsKey(date)) {
                 List<Event> events = event_list.remove(date);
                 for (Event e : events) {
                     if (e.ends()) {
                         cache.remove(date);
+                        System.out.println(date + " ends at " + new Date());
                     }
                     else {
-                        isBurstEvent(e, date);
+                        try {
+                            isBurstEvent(e, date);
+                        } catch (IOException ex) {
+                            ex.printStackTrace();
+                        }
                     }
                 }
             }
