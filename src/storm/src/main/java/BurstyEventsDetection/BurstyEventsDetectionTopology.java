@@ -43,9 +43,10 @@ public class BurstyEventsDetectionTopology {
                 .globalGrouping("DataCollect");
 
         Config conf = new Config();
-        conf.put("interval", 3000);
+        conf.put("interval", 1000);
         conf.put("expire_num", 30);
         conf.put("news_file_path", "../../data/news.txt");
+        conf.put("out_file", "../../data/result.txt");
 
         if (args != null && args.length > 0) {
             // storm

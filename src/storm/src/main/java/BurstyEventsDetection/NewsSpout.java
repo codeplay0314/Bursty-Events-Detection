@@ -12,6 +12,7 @@ import org.apache.storm.utils.Utils;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -51,6 +52,7 @@ public class NewsSpout extends BaseRichSpout {
             String[] tokens = str.split("\t");
             if (!cur_date.equals(tokens[0])) {
                 if (!cur_date.equals("")) {
+                    System.out.println(cur_date + " starts at " + new Date());
                     _collector.emit(new Values(cur_date, docs));
                     docs = new ArrayList<Object>();
                     Utils.sleep(Interval);
@@ -60,11 +62,14 @@ public class NewsSpout extends BaseRichSpout {
             String[] features = tokens[1].split(" ");
             Document doc = new Document();
             for (String feat : features) {
-                doc.add(new Feature(feat));
+                if (feat.length() > 1) {
+                    doc.add(new Feature(feat));
+                }
             }
             docs.add(doc);
         }
         if (docs.size() > 0) {
+            System.out.println(cur_date + " starts at " + new Date());
             _collector.emit(new Values(cur_date, docs));
         }
 

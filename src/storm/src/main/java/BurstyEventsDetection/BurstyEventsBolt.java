@@ -1,8 +1,10 @@
 package BurstyEventsDetection;
 
+import BurstyEventsDetection.lib.UnionFind;
 import BurstyEventsDetection.module.Event;
 import BurstyEventsDetection.module.Feature;
 import BurstyEventsDetection.module.FeatureInfo;
+import javafx.scene.control.DateCell;
 import javafx.util.Pair;
 import org.apache.storm.topology.BasicOutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -11,126 +13,149 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.lang.reflect.Array;
 import java.util.*;
 
 public class BurstyEventsBolt extends BaseBasicBolt {
 
     public int cold_start_countdown = 7;
+//
+//    private double get_score(List<FeatureInfo> features, List<FeatureInfo> all) {
+//        HashSet<String> cap = new HashSet<>(), cup = new HashSet<>();
+//        for (FeatureInfo.Info i: features.get(0).get_infos()) {
+//            cap.add(i.get_date());
+//            cup.add(i.get_date());
+//        }
+//        for (int n = 1; n < features.size(); n++) {
+//            for (FeatureInfo.Info i: features.get(n).get_infos()) {
+//                cup.add(i.get_date());
+//            }
+//            HashSet<String> cap2 = new HashSet<>();
+//            for (String v: cap) {
+//                boolean f = false;
+//                for (FeatureInfo.Info i: features.get(n).get_infos()) {
+//                    if (v.equals(i.get_date())) {
+//                        f = true;
+//                        break;
+//                    }
+//                }
+//                if (f)
+//                    cap2.add(v);
+//            }
+//            cap = cap2;
+//        }
+//        double a = -Math.log((double) cap.size() / cup.size());
+//        BitSet ad = new BitSet();
+//        for (FeatureInfo f: features) {
+//            BitSet d = f.get_infos()[f.get_infos().length - 1].get_doc_set();
+//            ad.or(d);
+//        }
+//        int m = ad.cardinality();
+//        for (FeatureInfo f: features) {
+//            int d = f.get_infos()[f.get_infos().length - 1].get_doc_info().getKey();
+//            a -= Math.log((double) d / m);
+//        }
+//        for (FeatureInfo f: all) {
+//            if (features.contains(f))
+//                break;
+//            int d = f.get_infos()[f.get_infos().length - 1].get_doc_info().getKey();
+//            a -= Math.log(1 - (double) d / m);
+//        }
+//        if (Double.isNaN(a))
+//            a = Double.POSITIVE_INFINITY;
+//        return a;
+//    }
 
-    private double get_score(List<FeatureInfo> features, List<FeatureInfo> all) {
-        HashSet<String> cap = new HashSet<>(), cup = new HashSet<>();
-        for (FeatureInfo.Info i: features.get(0).get_infos()) {
-            cap.add(i.get_date());
-            cup.add(i.get_date());
-        }
-        for (int n = 1; n < features.size(); n++) {
-            for (FeatureInfo.Info i: features.get(n).get_infos()) {
-                cup.add(i.get_date());
-            }
-            HashSet<String> cap2 = new HashSet<>();
-            for (String v: cap) {
-                boolean f = false;
-                for (FeatureInfo.Info i: features.get(n).get_infos()) {
-                    if (v.equals(i.get_date())) {
-                        f = true;
-                        break;
-                    }
-                }
-                if (f)
-                    cap2.add(v);
-            }
-            cap = cap2;
-        }
-        double a = -Math.log((double) cap.size() / cup.size());
-        BitSet ad = new BitSet();
-        for (FeatureInfo f: features) {
-            BitSet d = f.get_infos()[f.get_infos().length - 1].get_doc_set();
-            ad.or(d);
-        }
-        int m = ad.cardinality();
-        for (FeatureInfo f: features) {
-            int d = f.get_infos()[f.get_infos().length - 1].get_doc_info().getKey();
-            a -= Math.log((double) d / m);
-        }
-        for (FeatureInfo f: all) {
-            if (features.contains(f))
-                break;
-            int d = f.get_infos()[f.get_infos().length - 1].get_doc_info().getKey();
-            a -= Math.log(1 - (double) d / m);
-        }
-        if (Double.isNaN(a))
-            a = Double.POSITIVE_INFINITY;
-        return a;
+    class DateCompare {
+        BitSet b1, b2;
     }
+
+    boolean scoreCompare(FeatureInfo f1, FeatureInfo f2) {
+
+        HashMap<String, DateCompare> mp = new HashMap<String, DateCompare>();
+        HashSet<String> dates1 = new HashSet<String>();
+        for (FeatureInfo.Info info : f1.get_infos()) {
+            String date = info.get_date();
+            dates1.add(date);
+            DateCompare dc = mp.containsKey(date) ? mp.get(date) : new DateCompare();
+            dc.b1 = (BitSet) info.get_doc_set().clone();
+            dc.b2 = new BitSet(info.get_doc_info().getValue());
+            mp.put(date, dc);
+        }
+        HashSet<String> dates2 = new HashSet<String>();
+        for (FeatureInfo.Info info : f2.get_infos()) {
+            String date = info.get_date();
+            dates2.add(date);
+            DateCompare dc = mp.containsKey(date) ? mp.get(date) : new DateCompare();
+            if (dc.b1 == null) dc.b1 = new BitSet(info.get_doc_info().getValue());
+            dc.b2 = (BitSet) info.get_doc_set().clone();
+            mp.put(date, dc);
+        }
+        int a = dates1.size(), b = dates2.size();
+        dates1.addAll(dates2);
+        int c = dates1.size();
+        double Pe1 = (double) (a + b - c) / c, Pe2 = (double) 1;
+
+        a = b = c = 0;
+        for (String date : mp.keySet()) {
+            DateCompare dc = mp.get(date);
+            BitSet bset = (BitSet) dc.b1.clone();
+            bset.or(dc.b2);
+            a += dc.b1.cardinality();
+            b += dc.b2.cardinality();
+            c += bset.cardinality();
+        }
+        double Pde1 = (double) a / c * b / c, Pde21 = (1 - (double) a / c) * b / c, Pde22 = (1 - (double) b / c) * a / c;
+        double score1 = Pde1 * Pe1, score21 = Pde21 * Pe2, score22 = Pde22 * Pe2;
+        return score1 > score21 && score1 > score22;
+    }
+
+    HashSet<String> word_last_day = new HashSet<String>();
 
     @Override
     public void execute(Tuple input, BasicOutputCollector collector) {
         String date = input.getValue(0).toString();
-        List<FeatureInfo> finfo = (List<FeatureInfo>) input.getValue(1);
+        List<FeatureInfo> finfos = (List<FeatureInfo>) input.getValue(1);
 
-        // Todo: This algorithm is n^3, thus the number of features should < 10^3
-        ArrayList<Pair<List<Double>, ArrayList<FeatureInfo>>> events = new ArrayList<>();
-        ArrayList<FeatureInfo> feat = new ArrayList<>();
-         for (FeatureInfo f: finfo)
-             if (!f.isStopword())
-                 feat.add(f);
-         feat.sort((f1, f2) -> -Integer.compare(
-                 f1.get_infos()[f1.get_infos().length - 1].get_doc_info().getKey(),
-                 f2.get_infos()[f2.get_infos().length - 1].get_doc_info().getKey()));
+        List<FeatureInfo> finfo = new ArrayList<>();
+        HashSet<String> word_today = new HashSet<String>();
+        for (FeatureInfo f : finfos) {
+//            word_today.add(f.get_feature().get());
+            if (!f.isStopword() &&
+                    f.get_infos()[f.get_infos().length - 1].get_doc_info().getKey() >= 5) {
+                finfo.add(f);
+            }
+        }
+//        word_last_day = word_today;
 
         if (cold_start_countdown > 0) {
             cold_start_countdown--;
-            System.out.println("COLD START COUNTDOWN: " + cold_start_countdown);
         }
         else {
-            while (feat.size() > 0) {
-                FeatureInfo k = feat.remove(0);
-                double min_cost = Double.POSITIVE_INFINITY;
-                Pair<List<Double>, ArrayList<FeatureInfo>> min_event = null;
-                FeatureInfo min_feat = null;
-                for (Pair<List<Double>, ArrayList<FeatureInfo>> e: events) {
-                    e.getValue().add(k);
-                    double c = get_score(e.getValue(), feat);
-                    if (c < min_cost) {
-                        min_cost = c;
-                        min_event = e;
-                    }
-                    e.getValue().remove(k);
-                }
-                for (FeatureInfo f: feat) {
-                    ArrayList<FeatureInfo> e = new ArrayList<>();
-                    e.add(k);
-                    e.add(f);
-                    double c = get_score(e, feat);
-                    if (c < min_cost) {
-                        ArrayList<Double> cc = new ArrayList<>();
-                        cc.add(c);
-                        min_cost = c;
-                        min_event = new Pair<>(cc, e);
-                        min_feat = f;
-                    }
-                }
-                if (min_feat != null) {
-                    feat.remove(min_feat);
-                    events.add(min_event);
-                } else if (min_event != null) {
-                    if (min_cost < min_event.getKey().get(0)) {
-                        min_event.getKey().set(0, min_cost);
-                        min_event.getValue().add(k);
+            int n = finfo.size();
+            UnionFind union = new UnionFind(n);
+
+            for (int i = 0; i < n; i++) {
+                for (int j = i + 1; j < n; j++) {
+                    if (scoreCompare(finfo.get(i), finfo.get(j))) {
+                        union.unite(i, j);
                     }
                 }
             }
-        }
 
-        events.sort(Comparator.comparingDouble(e -> e.getKey().get(0)));
-        for (Pair<List<Double>, ArrayList<FeatureInfo>> e: events) {
-            System.out.println("EVENT " + e.getValue().toString() + ", cost=" + e.getKey().get(0));
+            List<List<Integer>> es = union.getSet();
+            for (List<Integer> e : es) {
+                if (e.size() > 1) {
+                    List<Feature> flist = new ArrayList<Feature>();
+                    for (Integer i : e) {
+                        flist.add(new Feature(finfo.get(i).get_feature().get()));
+                    }
+                    Event event = new Event(flist);
+//                    System.out.println(date + " Event Emit: " + event.list());
+                    collector.emit(new Values(date, event));
+                }
+            }
         }
-        // TODO: emit events
-//         for (Event e : events) {
-//             collector.emit(new Values(date, e));
-//         }
+        collector.emit(new Values(date, new Event(true)));
     }
 
     @Override

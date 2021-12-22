@@ -1,1 +1,2 @@
-/data/
+src/storm/logs/*
+data/news.txt
