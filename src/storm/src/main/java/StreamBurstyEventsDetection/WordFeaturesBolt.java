@@ -14,7 +14,7 @@ import java.util.*;
 
 public class WordFeaturesBolt extends BaseBasicBolt {
     public static final int MIN_COUNT_SUBMIT = 1;
-    public static final int WORD_BOLT_COUNT = 12;
+    public static final int WORD_BOLT_COUNT = 32;
     HashMap<String, MinHashCounter> wordMap = new HashMap<>();
 
     public static class WordStreamGrouping implements CustomStreamGrouping {

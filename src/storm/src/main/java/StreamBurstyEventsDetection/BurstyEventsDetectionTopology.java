@@ -10,7 +10,7 @@ public class BurstyEventsDetectionTopology {
     public static void main(String[] args) throws Exception {
         TopologyBuilder builder = new TopologyBuilder();
         builder.setSpout("documents", new DocumentSpout(), 1);
-        builder.setBolt("words", new DocumentWordBolt(), 2)
+        builder.setBolt("words", new DocumentWordBolt(), 8)
                 .shuffleGrouping("documents");
         builder.setBolt("features", new WordFeaturesBoltV2(), WordFeaturesBolt.WORD_BOLT_COUNT)
                 .customGrouping("words", new WordFeaturesBolt.WordStreamGrouping());
