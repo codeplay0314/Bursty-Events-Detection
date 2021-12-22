@@ -1,5 +1,6 @@
 package BurstyEventsDetection;
 
+import BurstyEventsDetection.lib.BurstyProb;
 import BurstyEventsDetection.lib.UnionFind;
 import BurstyEventsDetection.module.Event;
 import BurstyEventsDetection.module.Feature;
@@ -120,8 +121,16 @@ public class BurstyEventsBolt extends BaseBasicBolt {
         HashSet<String> word_today = new HashSet<String>();
         for (FeatureInfo f : finfos) {
 //            word_today.add(f.get_feature().get());
-            if (!f.isStopword() &&
-                    f.get_infos()[f.get_infos().length - 1].get_doc_info().getKey() >= 5) {
+            FeatureInfo.Info infotoday = null;
+            for (FeatureInfo.Info info : f.get_infos()) {
+                if (info.get_date().equals(date)) {
+                    infotoday = info;
+                    break;
+                }
+            }
+            if (infotoday == null) continue;
+            if (!f.isStopword() && BurstyProb.calc(infotoday.get_doc_info().getValue(), infotoday.get_doc_info().getKey(), f.get_p()) > 1e-6 &&
+                    f.get_infos()[f.get_infos().length - 1].get_doc_info().getKey() >= 3) {
                 finfo.add(f);
             }
         }
@@ -134,6 +143,7 @@ public class BurstyEventsBolt extends BaseBasicBolt {
             int n = finfo.size();
             UnionFind union = new UnionFind(n);
 
+            System.out.println(n);
             for (int i = 0; i < n; i++) {
                 for (int j = i + 1; j < n; j++) {
                     if (scoreCompare(finfo.get(i), finfo.get(j))) {
