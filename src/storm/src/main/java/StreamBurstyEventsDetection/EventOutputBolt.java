@@ -4,7 +4,6 @@ import javafx.util.Pair;
 import org.apache.storm.topology.BasicOutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.topology.base.BaseBasicBolt;
-import org.apache.storm.trident.operation.builtin.Min;
 import org.apache.storm.tuple.Tuple;
 
 import java.io.BufferedWriter;
@@ -13,10 +12,13 @@ import java.io.IOException;
 import java.util.*;
 
 public class EventOutputBolt extends BaseBasicBolt {
-    public static final double BURST_THRESHOLD_SIGMA = 2;
+    public static final double BURST_THRESHOLD_SIGMA = 3;
     public static final int COLD_BOOT_DAY = 16;
-    public static final double BURST_THRESHOLD_SIMILAR = 1 / Math.sqrt(2);
-    public static final int BURST_MIN_COUNT = 5;
+    public static final double BURST_THRESHOLD_SIMILAR = 0.75;
+    public static final int BURST_MIN_COUNT = 15;
+    public static final int TOP_FEATURE_USE = 1000;
+    public static final String OUTPUT_FILE_PATH = "/home/hadoop/event.log";
+//    public static final String OUTPUT_FILE_PATH = "event.log";
 
     HashMap<String, DateFeatures> dateCollection = new HashMap<>();
     HashMap<String, WordHistory> wordCollection = new HashMap<>();
@@ -38,6 +40,39 @@ public class EventOutputBolt extends BaseBasicBolt {
         public int freq_cnt = 0;
     }
 
+    public boolean test_stopword(String word, int count, int all_count) {
+        double n = (double) count / all_count;
+        if (wordCollection.containsKey(word)) {
+            WordHistory history = wordCollection.get(word);
+            history.freq_sum += n;
+            history.freq_cnt++;
+            double p = history.freq_sum / history.freq_cnt;
+//            if (p > 1 || n > 1) {
+//                System.out.println("[BUG PROBABILITY] " + feature.word + ", n=" + n + ", p=" + p);
+//            }
+            if (p >= 0.8 || n >= 0.8 || count < BURST_MIN_COUNT)
+                return true;
+            else {
+                double o = Math.sqrt(p * (1 - p) / all_count);
+                double d = (n - p) / o;
+                return d < BURST_THRESHOLD_SIGMA;
+            }
+        } else {
+            WordHistory history = new WordHistory();
+            history.freq_sum = (double) count / all_count;
+            history.freq_cnt = 1;
+            wordCollection.put(word, history);
+            return true;
+        }
+    }
+
+    public double test_aggregate(DateFeatures.Feature x, DateFeatures.Feature y) {
+        int d = MinHashCounter.compareHash(x.min_hash, y.min_hash);
+//        double t = (double) (128 - d) / (256 - d) * (x.count + y.count) / Math.sqrt(x.count * y.count);
+        return (double) (MinHashCounter.HASH_LENGTH - d) / (MinHashCounter.HASH_LENGTH * 2 - d)
+                * (x.count + y.count) / Math.min(x.count, y.count);
+    }
+
     public void finish(String date) {
         DateFeatures dateFeatures = dateCollection.remove(date);
         System.out.println(DocumentSpout.TIME_FORMAT.format(new Date()) + " [EVENT] " + date + " completed, " +
@@ -45,53 +80,24 @@ public class EventOutputBolt extends BaseBasicBolt {
         if (++finished_cnt <= COLD_BOOT_DAY)
             return;
 
-        for (Iterator<DateFeatures.Feature> it = dateFeatures.features.iterator(); it.hasNext();) {
-            DateFeatures.Feature feature = it.next();
-            if (wordCollection.containsKey(feature.word)) {
-                WordHistory history = wordCollection.get(feature.word);
-                double n = (double) feature.count / dateFeatures.all_count;
-                history.freq_sum += n;
-                history.freq_cnt++;
-                double p = history.freq_sum / history.freq_cnt;
-//                if (p > 1 || n > 1) {
-//                    System.out.println("[BUG PROBABILITY] " + feature.word + ", n=" + n + ", p=" + p);
-//                }
-                if (p >= 0.8 || n >= 0.8 || feature.count < BURST_MIN_COUNT)
-                    it.remove();
-                else {
-                    double o = Math.sqrt(p * (1 - p) / dateFeatures.all_count);
-                    double d = (n - p) / o;
-                    if (d < BURST_THRESHOLD_SIGMA)
-                        it.remove();
-//                    else {
-//                        // Bursty feature found
-//                        System.out.println("[DISTRIBUTION] " + n + ", " + p + ", " + dateFeatures.all_count + ", " + o + ", " + d);
-//                        System.out.println("[FEATURE] " + date + " Bursty feature: " + feature.word + ", sigma=" + d);
-//                    }
-                }
-            } else {
-                WordHistory history = new WordHistory();
-                history.freq_sum = (double) feature.count / dateFeatures.all_count;
-                history.freq_cnt = 1;
-                wordCollection.put(feature.word, history);
-                it.remove();
-            }
-        }
+        dateFeatures.features.removeIf(feature -> test_stopword(feature.word, feature.count, dateFeatures.all_count));
         System.out.println("There are " + wordCollection.size() + " word history records.");
-        dateFeatures.features.sort((o1, o2) -> -Integer.compare(o1.count, o2.count));
         System.out.println("There are " + dateFeatures.features.size() + " bursty features.");
+        dateFeatures.features.sort((o1, o2) -> -Integer.compare(o1.count, o2.count));
+        List<DateFeatures.Feature> features = dateFeatures.features.subList(0,
+                Math.min(TOP_FEATURE_USE, dateFeatures.features.size()));
 
 //        for (DateFeatures.Feature feature: dateFeatures.features) {
 //            System.out.println("Feature " + feature.word + ", count=" + feature.count);
 //        }
 
-        ArrayList<Pair<Double, List<String>>> events = new ArrayList<>();
+        ArrayList<Pair<Pair<Integer, Double>, List<String>>> events = new ArrayList<>();
         boolean first = true;
-        while (dateFeatures.features.size() > 0) {
+        while (features.size() > 0) {
             double score_sum = 0;
             int score_cnt = 0;
             ArrayList<DateFeatures.Feature> feat = new ArrayList<>();
-            for (Iterator<DateFeatures.Feature> it = dateFeatures.features.iterator(); it.hasNext();) {
+            for (Iterator<DateFeatures.Feature> it = features.iterator(); it.hasNext();) {
                 DateFeatures.Feature x = it.next();
                 if (feat.size() == 0) {
                     feat.add(x);
@@ -100,8 +106,7 @@ public class EventOutputBolt extends BaseBasicBolt {
                     double score_part_sum = 0;
                     boolean add_feature = true;
                     for (DateFeatures.Feature k: feat) {
-                        int d = MinHashCounter.compareHash(k.min_hash, x.min_hash);
-                        double t = (double) (128 - d) / (256 - d) * (k.count + x.count) / Math.sqrt(k.count * x.count);
+                        double t = test_aggregate(x, k);
 //                        System.out.println("[SIMILAR] " + k.word + ", " + x.word + ": " + t);
                         if (t > BURST_THRESHOLD_SIMILAR) {
                             score_part_sum += t;
@@ -119,32 +124,41 @@ public class EventOutputBolt extends BaseBasicBolt {
                 }
             }
             ArrayList<String> words = new ArrayList<>();
-            for (DateFeatures.Feature f: feat)
+            int min_count = Integer.MAX_VALUE;
+            for (DateFeatures.Feature f: feat) {
+                min_count = Integer.min(min_count, f.count);
                 words.add(f.word);
+            }
             if (score_cnt > 0) {
-                events.add(new Pair<>(score_sum / score_cnt, words));
+                events.add(new Pair<>(new Pair<>(min_count, score_sum / score_cnt), words));
 //                System.out.println("[EVENT] score=" + (score_sum / score_cnt));
 //                for (DateFeatures.Feature f: feat)
 //                    System.out.println("[EVENT FEATURE] " + f.word + ", count=" + f.count + ", hash=" + Arrays.toString(f.min_hash));
             } else if (first && feat.size() > 0) {
-                int c2 = dateFeatures.features.size() > 0 ? dateFeatures.features.getFirst().count : 1;
+                int c2 = features.size() > 0 ? features.get(0).count : 1;
                 double r = (double) feat.get(0).count / c2 - 1;
                 if (r > BURST_THRESHOLD_SIMILAR)
-                    events.add(new Pair<>(r, words));
+                    events.add(new Pair<>(new Pair<>(min_count, r), words));
             }
             first = false;
         }
-        events.sort((o1, o2) -> -Double.compare(o1.getKey(), o2.getKey()));
-        System.out.println("There are " + events.size() + " bursty events.");
 
+        System.out.println("There are " + events.size() + " bursty events.");
+        output_events(date, events);
+    }
+
+    public void output_events(String date, List<Pair<Pair<Integer, Double>, List<String>>> events) {
+        events.sort((o1, o2) -> -Double.compare(o1.getKey().getKey(), o2.getKey().getKey()));
         try {
             if (bufferedWriter == null) {
-                bufferedWriter = new BufferedWriter(new FileWriter("event.log"));
+                bufferedWriter = new BufferedWriter(new FileWriter(OUTPUT_FILE_PATH));
             }
             bufferedWriter.write(date + "\n");
-            for (Pair<Double, List<String>> event: events) {
-                System.out.println("Event " + event.getValue().toString() + ", score=" + event.getKey());
-                bufferedWriter.write(event.getValue().toString() + " " + event.getKey() + "\n");
+            for (Pair<Pair<Integer, Double>, List<String>> event: events) {
+                System.out.println("Event " + event.getValue().toString() +
+                        ", count=" + event.getKey().getKey() + ", score=" + event.getKey().getValue());
+                bufferedWriter.write(event.getValue().toString() + " " +
+                        event.getKey().getKey() + " " + event.getKey().getValue() + "\n");
             }
             bufferedWriter.flush();
         } catch (IOException e) {

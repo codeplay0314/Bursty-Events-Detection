@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="storm:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/storm_jar</output-path>
+    <root id="archive" name="storm.jar">
+      <element id="module-output" name="storm" />
+    </root>
+  </artifact>
+</component>

@@ -3,7 +3,8 @@ package StreamBurstyEventsDetection;
 import java.util.Arrays;
 
 public class MinHashCounter {
-    private final int[][] hashWindow; // min, val
+    public static final int HASH_LENGTH = 128;
+    protected final int[][] hashWindow; // min, val
     public int count;
 
     public MinHashCounter() {
