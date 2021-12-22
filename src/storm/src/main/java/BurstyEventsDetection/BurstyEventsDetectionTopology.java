@@ -42,13 +42,33 @@ public class BurstyEventsDetectionTopology {
                 .globalGrouping("BurstyEvents")
                 .globalGrouping("DataCollect");
 
-        Config conf = new Config();
-        conf.put("interval", 1000);
-        conf.put("expire_num", 30);
-        conf.put("news_file_path", "../../data/news.txt");
-        conf.put("out_file", "../../data/result.txt");
+        if (args.length < 2) {
+            System.out.println("[Error][BurstyEventsDetectionTopology]: parameter required");
+        }
+        String config_file = args[1];
+        FileInputStream inputStream = null;
+        try {
+            inputStream = new FileInputStream(config_file);
+        } catch (FileNotFoundException e) {
+            System.out.println("[Error][BurstyEventsDetectionTopology]: : Can't find config file " + config_file);
+        }
+        assert inputStream != null;
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
 
-        if (args != null && args.length > 0) {
+        Config conf = new Config();
+        while (true) {
+            String str = null;
+            try {
+                str = bufferedReader.readLine();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            if (str == null) break;
+            String[] tokens = str.split("=");
+            conf.put(tokens[0], tokens[1]);
+        }
+
+        if (args != null && args.length < 3) {
             // storm
             conf.setNumWorkers(3);
             try {

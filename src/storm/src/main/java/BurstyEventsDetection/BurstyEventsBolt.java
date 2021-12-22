@@ -143,7 +143,6 @@ public class BurstyEventsBolt extends BaseBasicBolt {
             int n = finfo.size();
             UnionFind union = new UnionFind(n);
 
-            System.out.println(n);
             for (int i = 0; i < n; i++) {
                 for (int j = i + 1; j < n; j++) {
                     if (scoreCompare(finfo.get(i), finfo.get(j))) {

@@ -61,7 +61,7 @@ public class HotPeriodBolt extends BaseRichBolt {
         _collector = collector;
         expire = Integer.parseInt(stormConf.get("expire_num").toString());
         try {
-            file = new FileOutputStream(stormConf.get("out_file").toString());
+            file = new FileOutputStream(stormConf.get("output_file_path").toString());
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }

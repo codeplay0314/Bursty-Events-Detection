@@ -25,7 +25,7 @@ public class NewsSpout extends BaseRichSpout {
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
         _collector = collector;
         Interval = Integer.parseInt(conf.get("interval").toString());
-        file_path = conf.get("news_file_path").toString();
+        file_path = conf.get("input_file_path").toString();
     }
 
     @Override
@@ -42,7 +42,7 @@ public class NewsSpout extends BaseRichSpout {
         String cur_date = "";
         List<Object> docs = new ArrayList<Object>();
         while (true) {
-            String str = "";
+            String str = null;
             try {
                 str = bufferedReader.readLine();
             } catch (IOException e) {

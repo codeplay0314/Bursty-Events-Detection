@@ -1,4 +1,3 @@
 src/storm/logs/*
-src/storm/out
 src/storm/target
 data/news.txt
