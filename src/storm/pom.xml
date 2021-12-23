@@ -4,9 +4,10 @@
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>cn.fudan.bigdata</groupId>
-    <artifactId>storm-wordcount</artifactId>
+    <artifactId>storm-bursty-event-detection</artifactId>
     <packaging>jar</packaging>
     <version>0.0</version>
+    <name>storm-bursty-event-detection</name>
 
     <build>
         <plugins>
@@ -20,7 +21,6 @@
             </plugin>
         </plugins>
     </build>
-    <name>storm-wordcount</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -37,7 +37,6 @@
             <groupId>org.apache.storm</groupId>
             <artifactId>storm-core</artifactId>
             <version>2.3.0</version>
-            <!--            <scope>provided</scope>-->
         </dependency>
 <!--        <dependency>-->
 <!--            <groupId>org.apache.storm</groupId>-->
