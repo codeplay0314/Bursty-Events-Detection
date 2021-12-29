@@ -65,20 +65,20 @@ def min_val_count(dict1, dict2):
 if __name__ == '__main__':
     traditional_bursty_event = process_traditional()
     innovative_bursty_event, event_prob = process_innovative()
-    date_event_count = min_val_count(traditional_bursty_event, innovative_bursty_event)
-    # print(date_event_count)
-    for date in date_event_count:
-        print(date, date_event_count[date])
-    # for date in traditional_bursty_event:
-    #     cnt = 0
-    #     if(date in innovative_bursty_event):
-    #         event_list_1 = traditional_bursty_event[date]
-    #         event_list_2 = innovative_bursty_event[date]
-    #         for event_1 in event_list_1:
-    #             for event_2 in event_list_2:
-    #                 distance = jaccard(event_1, event_2)
-    #                 if distance < ALPHA:
-    #                     # print(distance, event_1, event_2, event_prob[str(event_2)])
-    #                     cnt += 1
-    #                     break
-    #     print(date, cnt)
+#     date_event_count = min_val_count(traditional_bursty_event, innovative_bursty_event)
+#     print(date_event_count)
+#     for date in date_event_count:
+#         print(date, date_event_count[date])
+    for date in traditional_bursty_event:
+        cnt = 0
+        if(date in innovative_bursty_event):
+            event_list_1 = traditional_bursty_event[date]
+            event_list_2 = innovative_bursty_event[date]
+            for event_1 in event_list_1:
+                for event_2 in event_list_2:
+                    distance = jaccard(event_1, event_2)
+                    if distance < ALPHA:
+                        # print(distance, event_1, event_2, event_prob[str(event_2)])
+                        cnt += 1
+                        break
+        print(date, cnt)
