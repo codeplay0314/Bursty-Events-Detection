@@ -2,7 +2,7 @@
 
 项目组成员：傅尔正 李屹 韩晓宇 赵予珩
 
-项目选题为基于 Storm/Flink 的文本流事件监测，项目实现主要参照 **VLDB‘05** 论文 *Parameter Free Bursty Events Detection in Text Streams*。本项目基于 Storm 和 Kaggle 上的新闻数据集完成了 Bursty Event Detetion 的两种实现算法，其一是传统的基于参考文献实现的算法，其二是项目成员根据原有算法进行针对性优化后的改进算法。
+项目选题为基于 Storm/Flink 的文本流事件监测，项目实现主要参照 **VLDB‘05** 论文 [*Parameter Free Bursty Events Detection in Text Streams*](files/VLDB05_Parameter.pdf)。本项目基于 Storm 和 Kaggle 上的新闻数据集完成了 Bursty Event Detetion 的两种实现算法，其一是传统的基于参考文献实现的算法，其二是项目成员根据原有算法进行针对性优化后的改进算法。
 
 本报告分为以下五个部分进行撰写：环境搭建与数据清洗、基于参考文献的算法实现、改进算法及修改思路、事件检测结果、事件检测准确性对比分析以及项目分工。
 
@@ -58,11 +58,16 @@ BurstyEventsDetection
 
 ![](./files/readme.src/BurstyEventsDetectionTopology.png)
 
-[`NewsSpout.java`] 模拟了数据的流输入，从文件读入并定时打包发送时间戳相同的数据 
-[`BurstyFeaturesBolt.java`] 将每天的feature的文档信息写成一个内部静态类`FeatureInfo.Info`，并按fieldsGrouping发送到下一个bolt 
-[`FeatureProcessBolt.java`] 原理为滑动窗口的cache缓存了了`expire_day`天的数据，同一feature合并成一个`FeatureInfo`打包发送下游 
+[`NewsSpout.java`] 模拟了数据的流输入，从文件读入并定时打包发送时间戳相同的数据
+
+[`BurstyFeaturesBolt.java`] 将每天的feature的文档信息写成一个内部静态类`FeatureInfo.Info`，并按fieldsGrouping发送到下一个bolt
+
+[`FeatureProcessBolt.java`] 原理为滑动窗口的cache缓存了了`expire_day`天的数据，同一feature合并成一个`FeatureInfo`打包发送下游
+
 [`DataCollect.java` ]将上一步并行计算的`FeatureInfo`进行打包（进行了同步化操作）
-[`BurstyEventsBolt.java`] 将整天的features进行聚类，设数量为n，原文的方法复杂度为O(2<sup>n</sup> * n)，这里修改为贪心连边，复杂度降为O(n<sup>3</sup>)。同时，在这里进行了feature的筛选，滤掉了出现平均频率过高（Stopwords）和过低（非Bursty)。向下游发送Event集合 
+
+[`BurstyEventsBolt.java`] 将整天的features进行聚类，设数量为n，原文的方法复杂度为O(2<sup>n</sup> * n)，这里修改为贪心连边，复杂度降为O(n<sup>3</sup>)。同时，在这里进行了feature的筛选，滤掉了出现平均频率过高（Stopwords）和过低（非Bursty)。向下游发送Event集合
+
 [`HotPeriodBolt.java`] 跟拒Event和Doc数据计算Event在当下突发的概率并输出结果  
 
 ```java
@@ -86,13 +91,16 @@ builder.setBolt("HotPeriod", new HotPeriodBolt(), 1)
 #### lib
 
 [`Binomial.java`] 计算二项分布概率
+
 [`BurstyProb.java`] 计算feature突发概率
+
 [`Calc.java`] 计算数组平均值和方差
+
 [`UnionFind.java`] 并查集
 
 #### module
 
-[`Document.java`, `Event.java`, `Feature.java`,`FeatureInfo.java`] 定义了结构中用到的四个类。
+[`Document.java`, `Event.java`, `Feature.java`, `FeatureInfo.java`] 定义了结构中用到的四个类。
 
 ### 实现的问题
 
